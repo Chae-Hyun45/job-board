@@ -20,6 +20,8 @@
 - URL 등록 기능은 이번 스펙 범위에서 제외한다 (PDF 업로드만 지원).
 - 모든 커밋 메시지, 코드 내 사용자 노출 문자열(에러 메시지 등), 문서는 한글로 작성한다.
 - 원본 PDF는 서버 로컬 파일시스템(`backend/uploads/`)에 저장한다.
+- **Spring Boot 4.1 테스트 모듈 분리 주의**: Boot 4.x부터 테스트 인프라가 기술별로 모듈화되었다. `backend/pom.xml`의 test 의존성은 `spring-boot-starter-test` + `spring-boot-starter-webmvc-test`(MockMvc/`@AutoConfigureMockMvc`용) + `spring-boot-starter-data-jpa-test`(`@DataJpaTest`용) 세 가지를 모두 포함해야 한다 (Task 1에서 이미 반영됨). 어노테이션 임포트 경로도 예전과 다르다 — `@AutoConfigureMockMvc`는 `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc`, `@DataJpaTest`는 `org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest` (이 계획 문서의 모든 코드 스니펫에는 이미 올바른 경로가 반영되어 있음 — 혹시 컴파일 에러가 나면 이 두 임포트부터 의심할 것). `@SpringBootTest`, `@MockitoBean`, `MockRestServiceServer`, `@TempDir` 등은 기존 경로 그대로다.
+- **로컬 실행 환경**: 이 머신에는 Java/Maven/Node가 사용자 홈 디렉토리에 포터블로 설치되어 있다 (`~/.local/opt/jdk-25.0.3+9`, `~/.local/opt/apache-maven-3.9.16`, PATH는 `~/.zshrc`에 설정됨). Bash 도구는 명령마다 상태가 초기화되므로, `mvn`/`java`가 `command not found`로 나오면 명령 앞에 `source ~/.zshrc 2>/dev/null &&`를 붙여서 다시 실행할 것.
 
 ---
 
@@ -129,6 +131,16 @@ frontend/dist/
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -175,7 +187,7 @@ package com.jobboard.common;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -325,7 +337,7 @@ package com.jobboard.user;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -773,7 +785,7 @@ package com.jobboard.user;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -1169,7 +1181,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -1357,7 +1369,7 @@ import com.jobboard.user.UserRepository;
 import com.jobboard.user.UserRole;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -2486,7 +2498,7 @@ package com.jobboard.jobposting;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
@@ -2653,7 +2665,7 @@ package com.jobboard.jobposting;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
