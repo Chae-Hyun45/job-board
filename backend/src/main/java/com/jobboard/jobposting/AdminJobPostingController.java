@@ -60,4 +60,16 @@ public class AdminJobPostingController {
         jobPostingService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/dummy")
+    public List<JobPostingResponse> createDummy(HttpServletRequest httpRequest) {
+        Long adminId = (Long) httpRequest.getSession().getAttribute(SessionKeys.USER_ID);
+        return jobPostingService.createDummyJobPostings(adminId).stream().map(JobPostingResponse::from).toList();
+    }
+
+    @DeleteMapping("/dummy")
+    public ResponseEntity<Void> deleteDummy() {
+        jobPostingService.deleteDummyJobPostings();
+        return ResponseEntity.noContent().build();
+    }
 }

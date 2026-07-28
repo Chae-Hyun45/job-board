@@ -8,6 +8,8 @@ export const adminApi = {
   },
   createJobPosting: (data) => post('/admin/job-postings', data),
   listJobPostings: () => get('/admin/job-postings'),
+  createDummyJobPostings: () => post('/admin/job-postings/dummy'),
+  deleteDummyJobPostings: () => del('/admin/job-postings/dummy'),
   updateJobPosting: (id, data) => put(`/admin/job-postings/${id}`, data),
   deleteJobPosting: (id) => del(`/admin/job-postings/${id}`),
   listUsers: () => get('/admin/users'),

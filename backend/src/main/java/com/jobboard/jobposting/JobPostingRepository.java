@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface JobPostingRepository extends JpaRepository<JobPosting, Long>, JpaSpecificationExecutor<JobPosting> {
     List<JobPosting> findByStatusAndApplyEndDateBefore(JobPostingStatus status, LocalDate date);
+
+    long deleteByCompanyNameStartingWith(String prefix);
 }

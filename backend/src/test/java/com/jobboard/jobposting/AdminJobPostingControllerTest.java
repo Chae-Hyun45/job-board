@@ -1,5 +1,6 @@
 package com.jobboard.jobposting;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -103,6 +104,51 @@ class AdminJobPostingControllerTest {
                         "/api/admin/job-postings/" + id)
                         .session(session))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void 관리자가_더미데이터를_추가하고_삭제한다() throws Exception {
+        MockHttpSession session = loginAsAdmin();
+
+        MvcResult createResult = mockMvc.perform(post("/api/admin/job-postings/dummy").session(session))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode created = objectMapper.readTree(createResult.getResponse().getContentAsString());
+        org.assertj.core.api.Assertions.assertThat(created.size()).isEqualTo(10);
+        created.forEach(node ->
+                org.assertj.core.api.Assertions.assertThat(node.get("companyName").asText()).startsWith("[더미]"));
+
+        MvcResult listAfterCreate = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+                        "/api/admin/job-postings")
+                        .session(session))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode listAfterCreateBody = objectMapper.readTree(listAfterCreate.getResponse().getContentAsString());
+        org.assertj.core.api.Assertions.assertThat(countDummyEntries(listAfterCreateBody)).isEqualTo(10);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                        "/api/admin/job-postings/dummy")
+                        .session(session))
+                .andExpect(status().isNoContent());
+
+        MvcResult listAfterDelete = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+                        "/api/admin/job-postings")
+                        .session(session))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode listAfterDeleteBody = objectMapper.readTree(listAfterDelete.getResponse().getContentAsString());
+        org.assertj.core.api.Assertions.assertThat(countDummyEntries(listAfterDeleteBody)).isZero();
+    }
+
+    private long countDummyEntries(JsonNode list) {
+        long count = 0;
+        for (JsonNode node : list) {
+            if (node.get("companyName").asText().startsWith("[더미]")) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private byte[] createSamplePdfBytes() throws Exception {

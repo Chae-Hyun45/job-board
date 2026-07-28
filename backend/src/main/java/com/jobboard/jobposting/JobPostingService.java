@@ -10,14 +10,19 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class JobPostingService {
+
+    private static final String DUMMY_COMPANY_PREFIX = "[더미] ";
+    private static final String[] DUMMY_LOCATIONS = {"서울", "부산", "대전", "인천", "광주", "대구", "성남", "수원", "판교", "제주"};
 
     private final JobPostingRepository jobPostingRepository;
     private final UserRepository userRepository;
@@ -122,6 +127,39 @@ public class JobPostingService {
 
     private Specification<JobPosting> andIfPresent(Specification<JobPosting> base, Specification<JobPosting> addition) {
         return addition == null ? base : base.and(addition);
+    }
+
+    public List<JobPosting> createDummyJobPostings(Long adminId) {
+        User admin = userRepository.getReferenceById(adminId);
+        CareerLevel[] careerLevels = CareerLevel.values();
+        EducationLevel[] educationLevels = EducationLevel.values();
+        EmploymentType[] employmentTypes = EmploymentType.values();
+
+        List<JobPosting> dummies = new ArrayList<>();
+        for (int i = 1; i <= 10; i++) {
+            JobPosting posting = new JobPosting();
+            posting.setCompanyName(DUMMY_COMPANY_PREFIX + i + "번 회사");
+            posting.setLocation(DUMMY_LOCATIONS[(i - 1) % DUMMY_LOCATIONS.length]);
+            posting.setCareerLevel(careerLevels[(i - 1) % careerLevels.length]);
+            posting.setEducation(educationLevels[(i - 1) % educationLevels.length]);
+            posting.setEmploymentType(employmentTypes[(i - 1) % employmentTypes.length]);
+            posting.setConditionNote("더미 데이터 " + i + "번");
+            posting.setApplyStartDate(LocalDate.now());
+            posting.setApplyEndDate(LocalDate.now().plusDays(30));
+            posting.setApplyMethod("이메일 접수 (더미)");
+            posting.setSalaryMin(3000 + i * 100);
+            posting.setSalaryMax(3500 + i * 100);
+            posting.setSalaryNote("협의가능");
+            posting.setPdfFileName("dummy.pdf");
+            posting.setCreatedBy(admin);
+            dummies.add(posting);
+        }
+        return jobPostingRepository.saveAll(dummies);
+    }
+
+    @Transactional
+    public void deleteDummyJobPostings() {
+        jobPostingRepository.deleteByCompanyNameStartingWith(DUMMY_COMPANY_PREFIX);
     }
 
     public void closeExpired() {

@@ -19,10 +19,12 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class JobPostingServiceTest {
@@ -94,6 +96,29 @@ class JobPostingServiceTest {
         assertThat(posting.getCompanyName()).isEqualTo("테스트회사");
         assertThat(posting.getStatus()).isEqualTo(JobPostingStatus.ACTIVE);
         assertThat(posting.getCreatedBy()).isEqualTo(admin);
+    }
+
+    @Test
+    void 더미데이터_10개를_생성한다() {
+        User admin = new User("admin@jobboard.com", "pw", "관리자", UserRole.ADMIN);
+        when(userRepository.getReferenceById(1L)).thenReturn(admin);
+        when(jobPostingRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<JobPosting> dummies = jobPostingService.createDummyJobPostings(1L);
+
+        assertThat(dummies).hasSize(10);
+        assertThat(dummies).allSatisfy(posting -> {
+            assertThat(posting.getCompanyName()).startsWith("[더미]");
+            assertThat(posting.getCreatedBy()).isEqualTo(admin);
+            assertThat(posting.getStatus()).isEqualTo(JobPostingStatus.ACTIVE);
+        });
+    }
+
+    @Test
+    void 더미데이터를_삭제한다() {
+        jobPostingService.deleteDummyJobPostings();
+
+        verify(jobPostingRepository).deleteByCompanyNameStartingWith("[더미] ");
     }
 
     @Nested
