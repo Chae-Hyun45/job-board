@@ -2862,7 +2862,7 @@ git commit -m "feat: 만료 채용공고 자동 마감 스케줄러 추가"
 
 ---
 
-## Task 15: 프론트엔드 API 클라이언트 + AuthContext + 라우팅 골격
+## Task 15: 프론트엔드 API 클라이언트 + AuthContext + ProtectedRoute
 
 **Files:**
 - Create: `frontend/src/api/client.js`
@@ -2871,8 +2871,9 @@ git commit -m "feat: 만료 채용공고 자동 마감 스케줄러 추가"
 - Create: `frontend/src/api/adminApi.js`
 - Create: `frontend/src/context/AuthContext.jsx`
 - Create: `frontend/src/components/ProtectedRoute.jsx`
-- Create: `frontend/src/App.jsx` (기존 Vite 기본 파일 대체)
 - Test: `frontend/src/components/ProtectedRoute.test.jsx`
+
+이 태스크는 `App.jsx`를 만들지 않는다 (아직 존재하지 않는 페이지 컴포넌트를 import하면 빌드가 깨지므로). 기존 Vite 기본 `App.jsx`/`App.css`는 Task 20에서 실제 라우팅으로 교체될 때까지 그대로 둔다.
 
 **Interfaces:**
 - Produces: `authApi.{register,login,logout,me}`, `jobApi.{list,detail}`, `adminApi.{extractPdf,createJobPosting,listJobPostings,updateJobPosting,deleteJobPosting,listUsers,updateUserRole}`, `useAuth()` 훅 (`{user, loading, login, logout}`), `<ProtectedRoute/>`, `<AdminRoute/>`
@@ -3163,48 +3164,7 @@ export function AdminRoute() {
 Run: `cd frontend && npx vitest run src/components/ProtectedRoute.test.jsx`
 Expected: PASS
 
-- [ ] **Step 7: App.jsx 라우팅 골격 작성 (페이지는 이후 태스크에서 구현하므로 우선 자리표시 컴포넌트로 연결)**
-
-`frontend/src/App.jsx`:
-
-```jsx
-import { BrowserRouter, Routes, Route } from 'react-router'
-import { AuthProvider } from './context/AuthContext'
-import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute'
-import { LoginPage } from './pages/LoginPage'
-import { RegisterPage } from './pages/RegisterPage'
-import { JobListPage } from './pages/JobListPage'
-import { JobDetailPage } from './pages/JobDetailPage'
-import { AdminUploadPage } from './pages/admin/AdminUploadPage'
-import { AdminJobListPage } from './pages/admin/AdminJobListPage'
-import { AdminUserListPage } from './pages/admin/AdminUserListPage'
-
-export default function App() {
-  return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<JobListPage />} />
-            <Route path="/jobs/:id" element={<JobDetailPage />} />
-            <Route element={<AdminRoute />}>
-              <Route path="/admin/upload" element={<AdminUploadPage />} />
-              <Route path="/admin/jobs" element={<AdminJobListPage />} />
-              <Route path="/admin/users" element={<AdminUserListPage />} />
-            </Route>
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
-  )
-}
-```
-
-이 파일은 Task 16~20에서 각 페이지 컴포넌트를 만든 뒤에야 컴파일된다 (import 대상이 아직 없음). 지금은 커밋하지 않고, Task 16의 Step에서 `LoginPage`/`RegisterPage`를 만든 직후 다시 손대지 않도록 **이 Step만 완료 표시하고 커밋은 Task 20 완료 후 최종적으로 한 번에 확인**한다. 대신 지금 단계에서는 `frontend/src/App.jsx`를 아직 커밋하지 말고 Step 8로 넘어간다.
-
-- [ ] **Step 8: 커밋 (App.jsx 제외, 나머지 골격만)**
+- [ ] **Step 7: 커밋**
 
 ```bash
 cd /Users/hun/Summer_lecture_vibe_coding
@@ -3830,11 +3790,12 @@ git commit -m "feat: 관리자 PDF 업로드/검토 등록 페이지 추가"
 - Create: `frontend/src/pages/admin/AdminUserListPage.jsx`
 - Test: `frontend/src/pages/admin/AdminJobListPage.test.jsx`
 - Test: `frontend/src/pages/admin/AdminUserListPage.test.jsx`
+- Create: `frontend/src/App.jsx` (기존 Vite 기본 파일 대체 — 이 태스크에서 처음 만들어짐)
 - Modify: `frontend/src/main.jsx` (Vite 기본 엔트리에서 `App` import 확인)
 
 **Interfaces:**
-- Consumes: `adminApi.{listJobPostings,deleteJobPosting,listUsers,updateUserRole}` (Task 15), `App.jsx` (Task 15, 이 태스크에서 처음 실제로 컴파일됨)
-- Produces: `<AdminJobListPage/>`, `<AdminUserListPage/>`
+- Consumes: `adminApi.{listJobPostings,deleteJobPosting,listUsers,updateUserRole}` (Task 15), `useAuth()`/`ProtectedRoute`/`AdminRoute` (Task 15), `LoginPage`/`RegisterPage` (Task 16), `JobListPage` (Task 17), `JobDetailPage` (Task 18), `AdminUploadPage` (Task 19)
+- Produces: `<AdminJobListPage/>`, `<AdminUserListPage/>`, `frontend/src/App.jsx` (전체 라우팅)
 
 - [ ] **Step 1: 실패하는 AdminJobListPage 테스트 작성**
 
@@ -4017,7 +3978,46 @@ export function AdminUserListPage() {
 Run: `cd frontend && npx vitest run src/pages/admin/AdminUserListPage.test.jsx`
 Expected: PASS
 
-- [ ] **Step 9: `main.jsx`가 `App`을 렌더링하는지 확인 (Vite 기본 스캐폴딩 그대로 사용)**
+- [ ] **Step 9: App.jsx 라우팅 작성**
+
+`frontend/src/App.jsx` (기존 Vite 기본 파일을 대체):
+
+```jsx
+import { BrowserRouter, Routes, Route } from 'react-router'
+import { AuthProvider } from './context/AuthContext'
+import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute'
+import { LoginPage } from './pages/LoginPage'
+import { RegisterPage } from './pages/RegisterPage'
+import { JobListPage } from './pages/JobListPage'
+import { JobDetailPage } from './pages/JobDetailPage'
+import { AdminUploadPage } from './pages/admin/AdminUploadPage'
+import { AdminJobListPage } from './pages/admin/AdminJobListPage'
+import { AdminUserListPage } from './pages/admin/AdminUserListPage'
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<JobListPage />} />
+            <Route path="/jobs/:id" element={<JobDetailPage />} />
+            <Route element={<AdminRoute />}>
+              <Route path="/admin/upload" element={<AdminUploadPage />} />
+              <Route path="/admin/jobs" element={<AdminJobListPage />} />
+              <Route path="/admin/users" element={<AdminUserListPage />} />
+            </Route>
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  )
+}
+```
+
+- [ ] **Step 10: `main.jsx`가 `App`을 렌더링하는지 확인 (Vite 기본 스캐폴딩 그대로 사용)**
 
 `frontend/src/main.jsx` 내용 확인 (Vite 템플릿이 기본으로 생성한 아래 형태여야 함, 다르면 아래 내용으로 맞춘다):
 
@@ -4033,17 +4033,17 @@ createRoot(document.getElementById('root')).render(
 )
 ```
 
-- [ ] **Step 10: 프론트엔드 전체 테스트 실행**
+- [ ] **Step 11: 프론트엔드 전체 테스트 실행**
 
 Run: `cd frontend && npx vitest run`
 Expected: 모든 테스트 PASS (`App.jsx`가 참조하는 모든 페이지 컴포넌트가 이제 존재하므로 빌드도 통과해야 함)
 
-- [ ] **Step 11: 빌드 확인**
+- [ ] **Step 12: 빌드 확인**
 
 Run: `cd frontend && npm run build`
 Expected: 에러 없이 빌드 성공
 
-- [ ] **Step 12: 커밋 (App.jsx 포함 최종 반영)**
+- [ ] **Step 13: 커밋 (App.jsx 포함 최종 반영)**
 
 ```bash
 cd /Users/hun/Summer_lecture_vibe_coding
@@ -4051,7 +4051,7 @@ git add frontend/src/pages/admin frontend/src/App.jsx frontend/src/main.jsx
 git commit -m "feat: 관리자 채용공고/회원 관리 페이지 추가 및 라우팅 완성"
 ```
 
-- [ ] **Step 13: 수동 통합 확인 (OpenAI 실제 연동 제외)**
+- [ ] **Step 14: 수동 통합 확인 (OpenAI 실제 연동 제외)**
 
 Run:
 ```bash
@@ -4065,7 +4065,7 @@ Expected: `http://localhost:5173` 접속 → 회원가입 → 로그인 → 목�
 
 `OPENAI_API_KEY`를 아직 설정하지 않았다면 `/admin/upload`에서 "PDF에서 추출" 버튼을 눌렀을 때 OpenAI API가 401을 반환하며 실패하는 것이 정상이다 (Task 3의 `GlobalExceptionHandler`가 `ApiException`으로 감싸 에러 메시지를 반환). 이 계획의 자동화 테스트(Task 9, 11, 19)는 전부 `MockRestServiceServer`/목(mock) 객체로 대체되어 있어 실제 키 없이도 통과하므로, 지금 단계에서는 이 실패를 무시하고 넘어가도 된다. 실제 키는 준비되는 대로 아래 "참고: 환경변수"에 따라 등록하면 별도 코드 변경 없이 바로 연동된다.
 
-- [ ] **Step 14: 커밋 (Step 13 확인만 하는 단계이므로 코드 변경 없음 — 생략)**
+이 Step은 확인만 하는 단계이므로 코드 변경이 없다 — 별도 커밋 없음.
 
 ---
 
