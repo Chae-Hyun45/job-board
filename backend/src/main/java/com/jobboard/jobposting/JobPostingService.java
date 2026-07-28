@@ -40,7 +40,14 @@ public class JobPostingService {
     public PdfExtractionResult extractFromPdf(MultipartFile file) {
         String storedName = fileStorageService.store(file);
         String text = pdfTextExtractor.extractText(fileStorageService.resolve(storedName));
-        PdfExtractionResult aiResult = extractionClient.extract(text);
+        PdfExtractionResult aiResult;
+        try {
+            aiResult = extractionClient.extract(text);
+        } catch (ApiException e) {
+            // AI 추출이 실패해도 저장된 PDF 파일명만 돌려주어 관리자가 수동으로 입력할 수 있게 한다.
+            return new PdfExtractionResult(storedName, null, null, null, null, null, null,
+                    null, null, null, null, null, null);
+        }
         return new PdfExtractionResult(
                 storedName, aiResult.companyName(), aiResult.location(), aiResult.careerLevel(),
                 aiResult.education(), aiResult.employmentType(), aiResult.conditionNote(),

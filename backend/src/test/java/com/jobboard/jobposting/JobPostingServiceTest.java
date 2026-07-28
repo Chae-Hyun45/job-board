@@ -1,5 +1,6 @@
 package com.jobboard.jobposting;
 
+import com.jobboard.common.ApiException;
 import com.jobboard.jobposting.dto.JobPostingCreateRequest;
 import com.jobboard.jobposting.dto.PdfExtractionResult;
 import com.jobboard.user.User;
@@ -7,6 +8,7 @@ import com.jobboard.user.UserRepository;
 import com.jobboard.user.UserRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.file.Path;
@@ -51,6 +53,23 @@ class JobPostingServiceTest {
 
         assertThat(result.pdfFileName()).isEqualTo("stored-uuid.pdf");
         assertThat(result.companyName()).isEqualTo("테스트회사");
+    }
+
+    @Test
+    void AI_추출이_실패하면_예외없이_파일명만_채운_결과를_반환한다() {
+        MockMultipartFile file = new MockMultipartFile("file", "posting.pdf", "application/pdf", "content".getBytes());
+        when(fileStorageService.store(file)).thenReturn("stored-uuid.pdf");
+        when(fileStorageService.resolve("stored-uuid.pdf")).thenReturn(Path.of("stored-uuid.pdf"));
+        when(pdfTextExtractor.extractText(any())).thenReturn("추출된 텍스트");
+        when(extractionClient.extract("추출된 텍스트"))
+                .thenThrow(new ApiException(HttpStatus.BAD_GATEWAY, "채용정보 추출에 실패했습니다. 직접 입력해주세요."));
+
+        PdfExtractionResult result = jobPostingService.extractFromPdf(file);
+
+        assertThat(result.pdfFileName()).isEqualTo("stored-uuid.pdf");
+        assertThat(result.companyName()).isNull();
+        assertThat(result.location()).isNull();
+        assertThat(result.applyEndDate()).isNull();
     }
 
     @Test

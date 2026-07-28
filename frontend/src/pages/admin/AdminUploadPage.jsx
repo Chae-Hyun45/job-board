@@ -33,6 +33,9 @@ export function AdminUploadPage() {
         salaryMax: result.salaryMax ?? '',
         salaryNote: result.salaryNote ?? '',
       })
+      if (!result.companyName) {
+        setError('자동 추출에 실패했습니다. 나머지 항목을 직접 입력한 뒤 등록해주세요.')
+      }
     } catch (err) {
       setError(err.message)
     }

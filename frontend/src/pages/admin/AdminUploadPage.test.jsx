@@ -60,6 +60,48 @@ describe('AdminUploadPage', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
   })
 
+  it('AI 추출이 실패해도 파일명이 유지되어 수동 입력으로 등록할 수 있다', async () => {
+    adminApi.extractPdf.mockResolvedValueOnce({
+      pdfFileName: 'stored-uuid.pdf',
+      companyName: null,
+      location: null,
+      careerLevel: null,
+      education: null,
+      employmentType: null,
+      conditionNote: null,
+      applyStartDate: null,
+      applyEndDate: null,
+      applyMethod: null,
+      salaryMin: null,
+      salaryMax: null,
+      salaryNote: null,
+    })
+
+    render(
+      <MemoryRouter>
+        <AdminUploadPage />
+      </MemoryRouter>
+    )
+
+    const file = new File(['dummy'], 'posting.pdf', { type: 'application/pdf' })
+    fireEvent.change(screen.getByLabelText('PDF 파일'), { target: { files: [file] } })
+    fireEvent.click(screen.getByRole('button', { name: 'PDF에서 추출' }))
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByLabelText('회사명'), { target: { value: '수동회사' } })
+    fireEvent.change(screen.getByLabelText('위치'), { target: { value: '부산' } })
+    fireEvent.change(screen.getByLabelText('지원 시작일'), { target: { value: '2026-08-01' } })
+    fireEvent.change(screen.getByLabelText('지원 종료일'), { target: { value: '2026-08-31' } })
+
+    fireEvent.click(screen.getByRole('button', { name: '등록' }))
+
+    await waitFor(() => expect(adminApi.createJobPosting).toHaveBeenCalled())
+    expect(adminApi.createJobPosting).toHaveBeenCalledWith(
+      expect.objectContaining({ pdfFileName: 'stored-uuid.pdf', companyName: '수동회사', location: '부산' })
+    )
+  })
+
   it('등록이 실패하면 에러 메시지가 화면에 표시된다', async () => {
     adminApi.createJobPosting.mockRejectedValueOnce(new Error('등록 실패'))
 
