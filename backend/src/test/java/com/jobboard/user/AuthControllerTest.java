@@ -58,8 +58,9 @@ class AuthControllerTest {
     }
 
     @Test
-    void 로그인하지_않고_me를_호출하면_401을_반환한다() throws Exception {
+    void 로그인하지_않고_me를_호출하면_401과_한글_메시지를_반환한다() throws Exception {
         mockMvc.perform(get("/api/auth/me"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("로그인이 필요합니다."));
     }
 }

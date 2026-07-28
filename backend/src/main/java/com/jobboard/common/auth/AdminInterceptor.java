@@ -25,7 +25,7 @@ public class AdminInterceptor implements HandlerInterceptor {
                         .map(user -> user.getRole() == UserRole.ADMIN)
                         .orElse(false);
         if (!admin) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "관리자만 접근할 수 있습니다.");
+            ErrorResponseWriter.write(response, HttpServletResponse.SC_FORBIDDEN, "관리자만 접근할 수 있습니다.");
             return false;
         }
         return true;

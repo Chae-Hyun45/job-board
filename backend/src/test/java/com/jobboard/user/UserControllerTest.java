@@ -104,6 +104,7 @@ class UserControllerTest {
 
         mockMvc.perform(get("/api/admin/users")
                         .session((org.springframework.mock.web.MockHttpSession) session))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("관리자만 접근할 수 있습니다."));
     }
 }
