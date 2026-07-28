@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router'
 import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute'
+import { Layout } from './components/Layout'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { JobListPage } from './pages/JobListPage'
@@ -17,12 +18,14 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<JobListPage />} />
-            <Route path="/jobs/:id" element={<JobDetailPage />} />
-            <Route element={<AdminRoute />}>
-              <Route path="/admin/upload" element={<AdminUploadPage />} />
-              <Route path="/admin/jobs" element={<AdminJobListPage />} />
-              <Route path="/admin/users" element={<AdminUserListPage />} />
+            <Route element={<Layout />}>
+              <Route path="/" element={<JobListPage />} />
+              <Route path="/jobs/:id" element={<JobDetailPage />} />
+              <Route element={<AdminRoute />}>
+                <Route path="/admin/upload" element={<AdminUploadPage />} />
+                <Route path="/admin/jobs" element={<AdminJobListPage />} />
+                <Route path="/admin/users" element={<AdminUserListPage />} />
+              </Route>
             </Route>
           </Route>
         </Routes>

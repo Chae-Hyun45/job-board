@@ -21,17 +21,23 @@ export function LoginPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h1>로그인</h1>
-      {error && <p role="alert">{error}</p>}
-      <label htmlFor="login-email">이메일</label>
-      <input id="login-email" aria-label="이메일" type="email" value={email}
-             onChange={(e) => setEmail(e.target.value)} required />
-      <label htmlFor="login-password">비밀번호</label>
-      <input id="login-password" aria-label="비밀번호" type="password" value={password}
-             onChange={(e) => setPassword(e.target.value)} required />
-      <button type="submit">로그인</button>
-      <p><Link to="/register">회원가입</Link></p>
-    </form>
+    <div className="page page-narrow">
+      <form className="card" onSubmit={handleSubmit}>
+        <h1>로그인</h1>
+        {error && <p className="alert" role="alert">{error}</p>}
+        <div className="field">
+          <label htmlFor="login-email">이메일</label>
+          <input id="login-email" aria-label="이메일" type="email" value={email}
+                 onChange={(e) => setEmail(e.target.value)} required />
+        </div>
+        <div className="field">
+          <label htmlFor="login-password">비밀번호</label>
+          <input id="login-password" aria-label="비밀번호" type="password" value={password}
+                 onChange={(e) => setPassword(e.target.value)} required />
+        </div>
+        <button type="submit" className="btn btn-primary">로그인</button>
+        <p style={{ marginTop: 14 }}><Link to="/register">회원가입</Link></p>
+      </form>
+    </div>
   )
 }

@@ -11,13 +11,13 @@ export function JobDetailPage() {
     jobApi.detail(id).then(setPosting).catch((err) => setError(err.message))
   }, [id])
 
-  if (error) return <p role="alert">{error}</p>
-  if (!posting) return <p>불러오는 중...</p>
+  if (error) return <p className="alert" role="alert">{error}</p>
+  if (!posting) return <p className="muted">불러오는 중...</p>
 
   return (
-    <article>
+    <article className="card">
       <h1>{posting.companyName}</h1>
-      {posting.status === 'CLOSED' && <p>마감된 공고입니다.</p>}
+      {posting.status === 'CLOSED' && <p className="alert">마감된 공고입니다.</p>}
       <p>위치: {posting.location}</p>
       <p>채용조건: {posting.conditionNote}</p>
       <p>지원기간: {posting.applyStartDate} ~ {posting.applyEndDate}</p>
