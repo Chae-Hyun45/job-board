@@ -3,6 +3,7 @@ package com.jobboard.common;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.Map;
 
@@ -19,5 +20,16 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody()).containsEntry("message", "이미 가입된 이메일입니다.");
+    }
+
+    @Test
+    void 업로드_크기_초과를_413과_한글_메시지로_변환한다() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+        ResponseEntity<Map<String, String>> response =
+                handler.handleMaxUploadSize(new MaxUploadSizeExceededException(10 * 1024 * 1024));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE);
+        assertThat(response.getBody()).containsEntry("message", "업로드 가능한 파일 크기(10MB)를 초과했습니다.");
     }
 }
