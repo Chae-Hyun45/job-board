@@ -22,6 +22,9 @@
 - 원본 PDF는 서버 로컬 파일시스템(`backend/uploads/`)에 저장한다.
 - **Spring Boot 4.1 테스트 모듈 분리 주의**: Boot 4.x부터 테스트 인프라가 기술별로 모듈화되었다. `backend/pom.xml`의 test 의존성은 `spring-boot-starter-test` + `spring-boot-starter-webmvc-test`(MockMvc/`@AutoConfigureMockMvc`용) + `spring-boot-starter-data-jpa-test`(`@DataJpaTest`용) 세 가지를 모두 포함해야 한다 (Task 1에서 이미 반영됨). 어노테이션 임포트 경로도 예전과 다르다 — `@AutoConfigureMockMvc`는 `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc`, `@DataJpaTest`는 `org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest` (이 계획 문서의 모든 코드 스니펫에는 이미 올바른 경로가 반영되어 있음 — 혹시 컴파일 에러가 나면 이 두 임포트부터 의심할 것). `@SpringBootTest`, `@MockitoBean`, `MockRestServiceServer`, `@TempDir` 등은 기존 경로 그대로다.
 - **로컬 실행 환경**: 이 머신에는 Java/Maven/Node가 사용자 홈 디렉토리에 포터블로 설치되어 있다 (`~/.local/opt/jdk-25.0.3+9`, `~/.local/opt/apache-maven-3.9.16`, PATH는 `~/.zshrc`에 설정됨). Bash 도구는 명령마다 상태가 초기화되므로, `mvn`/`java`가 `command not found`로 나오면 명령 앞에 `source ~/.zshrc 2>/dev/null &&`를 붙여서 다시 실행할 것.
+- **Jackson 3 주의 (Spring Boot 4.1 기본값)**: 이 프로젝트는 Jackson 2(`com.fasterxml.jackson.*`)가 아니라 Jackson 3(`tools.jackson.*`)를 사용한다. `ObjectMapper`/`JsonNode`는 `tools.jackson.databind.ObjectMapper`/`tools.jackson.databind.JsonNode`에서 import해야 한다. Jackson 2의 체크 예외 `JsonProcessingException`은 Jackson 3에 없다 — 대신 언체크 예외인 `tools.jackson.core.JacksonException`을 catch한다 (이 계획 문서의 모든 코드 스니펫에는 이미 올바른 경로가 반영되어 있음). `jackson-annotations`(`@JsonProperty` 등)만 예외적으로 여전히 `com.fasterxml.jackson.annotation` 패키지를 사용한다.
+- **MockMvc 세션 캐스팅 주의**: `MockMvc`의 `.session(...)`에는 `org.springframework.mock.web.MockHttpSession`을 캐스팅해서 넘겨야 한다 (`jakarta.servlet.http.MockHttpSession`이라는 클래스는 존재하지 않는다).
+- **테스트 DB 격리**: `@SpringBootTest`가 개발용 파일 기반 H2(`./data/jobboard`)를 그대로 공유하면 이전 테스트 실행에서 남은 데이터 때문에 재실행 시 실패할 수 있다 (Task 5에서 발견/수정됨). `backend/src/test/resources/application.properties`에 테스트 전용 인메모리 H2 설정이 이미 분리되어 있으니 그대로 사용하고, 다시 만들 필요는 없다.
 
 ---
 
@@ -782,7 +785,7 @@ git commit -m "feat: UserService 회원가입/인증/권한변경 로직 추가"
 ```java
 package com.jobboard.user;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -830,12 +833,12 @@ class AuthControllerTest {
         var session = loginResult.getRequest().getSession(false);
         assertThat(session).isNotNull();
 
-        mockMvc.perform(get("/api/auth/me").session((jakarta.servlet.http.MockHttpSession) session))
+        mockMvc.perform(get("/api/auth/me").session((org.springframework.mock.web.MockHttpSession) session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("flow@jobboard.com"))
                 .andExpect(jsonPath("$.role").value("USER"));
 
-        mockMvc.perform(post("/api/auth/logout").session((jakarta.servlet.http.MockHttpSession) session))
+        mockMvc.perform(post("/api/auth/logout").session((org.springframework.mock.web.MockHttpSession) session))
                 .andExpect(status().isNoContent());
     }
 
@@ -1177,7 +1180,7 @@ Expected: PASS
 ```java
 package com.jobboard.user;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1230,7 +1233,7 @@ class UserControllerTest {
                 .andReturn();
 
         String body = listResult.getResponse().getContentAsString();
-        com.fasterxml.jackson.databind.JsonNode users = objectMapper.readTree(body);
+        tools.jackson.databind.JsonNode users = objectMapper.readTree(body);
         long memberId = -1;
         for (var node : users) {
             if (node.get("email").asText().equals("member@jobboard.com")) {
@@ -1842,7 +1845,7 @@ git commit -m "feat: PDFBox 기반 PDF 텍스트 추출기 추가"
 ```java
 package com.jobboard.jobposting;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.jobboard.jobposting.dto.PdfExtractionResult;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -1947,8 +1950,8 @@ public record PdfExtractionResult(
 ```java
 package com.jobboard.jobposting;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import com.jobboard.common.ApiException;
 import com.jobboard.jobposting.dto.PdfExtractionResult;
 import org.springframework.core.ParameterizedTypeReference;
@@ -2014,7 +2017,7 @@ public class OpenAiJobExtractionClient {
         String content = extractContent(response);
         try {
             return objectMapper.readValue(content, PdfExtractionResult.class);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "채용정보 추출 결과를 해석할 수 없습니다.");
         }
     }
@@ -2495,7 +2498,7 @@ Expected: PASS
 ```java
 package com.jobboard.jobposting;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -2662,7 +2665,7 @@ git commit -m "test: 관리자 채용공고 수정/삭제 통합 테스트 추�
 ```java
 package com.jobboard.jobposting;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
