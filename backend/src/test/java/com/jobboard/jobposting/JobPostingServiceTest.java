@@ -7,7 +7,13 @@ import com.jobboard.user.User;
 import com.jobboard.user.UserRepository;
 import com.jobboard.user.UserRole;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -88,5 +94,98 @@ class JobPostingServiceTest {
         assertThat(posting.getCompanyName()).isEqualTo("테스트회사");
         assertThat(posting.getStatus()).isEqualTo(JobPostingStatus.ACTIVE);
         assertThat(posting.getCreatedBy()).isEqualTo(admin);
+    }
+
+    @Nested
+    @DataJpaTest
+    class 검색과_자동마감 {
+
+        @Autowired
+        private JobPostingRepository repository;
+
+        @Autowired
+        private UserRepository users;
+
+        @Autowired
+        private TestEntityManager entityManager;
+
+        private JobPostingService service;
+        private User admin;
+
+        @BeforeEach
+        void setUp() {
+            service = new JobPostingService(repository, users,
+                    mock(FileStorageService.class), mock(PdfTextExtractor.class),
+                    mock(OpenAiJobExtractionClient.class));
+            admin = users.save(new User("admin@jobboard.com", "pw", "관리자", UserRole.ADMIN));
+        }
+
+        private JobPosting save(String companyName, String location, EmploymentType employmentType,
+                               LocalDate applyEndDate, JobPostingStatus status) {
+            JobPosting posting = new JobPosting();
+            posting.setCompanyName(companyName);
+            posting.setLocation(location);
+            posting.setCareerLevel(CareerLevel.NEW);
+            posting.setEducation(EducationLevel.BACHELOR);
+            posting.setEmploymentType(employmentType);
+            posting.setApplyStartDate(LocalDate.now().minusDays(10));
+            posting.setApplyEndDate(applyEndDate);
+            posting.setApplyMethod("이메일 접수");
+            posting.setPdfFileName("sample.pdf");
+            posting.setStatus(status);
+            posting.setCreatedBy(admin);
+            return repository.save(posting);
+        }
+
+        @Test
+        void keyword로_검색하면_매칭되는_공고만_반환한다() {
+            save("카카오", "서울", EmploymentType.FULL_TIME, LocalDate.now().plusDays(10), JobPostingStatus.ACTIVE);
+            save("네이버", "성남", EmploymentType.FULL_TIME, LocalDate.now().plusDays(10), JobPostingStatus.ACTIVE);
+
+            Page<JobPosting> page = service.search("카카오", null, null, PageRequest.of(0, 10));
+
+            assertThat(page.getContent()).extracting(JobPosting::getCompanyName).containsExactly("카카오");
+        }
+
+        @Test
+        void location과_employmentType_필터가_결과를_좁힌다() {
+            save("카카오", "서울", EmploymentType.FULL_TIME, LocalDate.now().plusDays(10), JobPostingStatus.ACTIVE);
+            save("네이버", "성남", EmploymentType.FULL_TIME, LocalDate.now().plusDays(10), JobPostingStatus.ACTIVE);
+            save("토스", "서울", EmploymentType.INTERN, LocalDate.now().plusDays(10), JobPostingStatus.ACTIVE);
+
+            Page<JobPosting> byLocation = service.search(null, "서울", null, PageRequest.of(0, 10));
+            assertThat(byLocation.getContent()).extracting(JobPosting::getCompanyName)
+                    .containsExactlyInAnyOrder("카카오", "토스");
+
+            Page<JobPosting> byType = service.search(null, "서울", EmploymentType.INTERN, PageRequest.of(0, 10));
+            assertThat(byType.getContent()).extracting(JobPosting::getCompanyName).containsExactly("토스");
+        }
+
+        @Test
+        void 검색결과에서_CLOSED_공고는_제외된다() {
+            save("활성회사", "서울", EmploymentType.FULL_TIME, LocalDate.now().plusDays(10), JobPostingStatus.ACTIVE);
+            save("마감회사", "서울", EmploymentType.FULL_TIME, LocalDate.now().minusDays(1), JobPostingStatus.CLOSED);
+
+            Page<JobPosting> page = service.search(null, null, null, PageRequest.of(0, 10));
+
+            assertThat(page.getContent()).extracting(JobPosting::getCompanyName).containsExactly("활성회사");
+        }
+
+        @Test
+        void closeExpired는_마감일이_지난_활성공고를_CLOSED로_저장한다() {
+            Long expiredId = save("만료회사", "서울", EmploymentType.FULL_TIME,
+                    LocalDate.now().minusDays(1), JobPostingStatus.ACTIVE).getId();
+            Long activeId = save("진행회사", "서울", EmploymentType.FULL_TIME,
+                    LocalDate.now().plusDays(10), JobPostingStatus.ACTIVE).getId();
+
+            service.closeExpired();
+            entityManager.flush();
+            entityManager.clear();
+
+            assertThat(repository.findById(expiredId)).get()
+                    .extracting(JobPosting::getStatus).isEqualTo(JobPostingStatus.CLOSED);
+            assertThat(repository.findById(activeId)).get()
+                    .extracting(JobPosting::getStatus).isEqualTo(JobPostingStatus.ACTIVE);
+        }
     }
 }
