@@ -8,6 +8,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.util.List;
 import java.util.Map;
@@ -57,12 +58,17 @@ public class OpenAiJobExtractionClient {
                 )
         );
 
-        Map<String, Object> response = restClient.post()
-                .uri("/chat/completions")
-                .body(requestBody)
-                .retrieve()
-                .body(new ParameterizedTypeReference<>() {
-                });
+        Map<String, Object> response;
+        try {
+            response = restClient.post()
+                    .uri("/chat/completions")
+                    .body(requestBody)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
+                    });
+        } catch (RestClientException e) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "채용정보 추출에 실패했습니다. 직접 입력해주세요.");
+        }
 
         String content = extractContent(response);
         try {
@@ -74,7 +80,10 @@ public class OpenAiJobExtractionClient {
 
     @SuppressWarnings("unchecked")
     private String extractContent(Map<String, Object> response) {
-        List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+        List<Map<String, Object>> choices = response == null ? null : (List<Map<String, Object>>) response.get("choices");
+        if (choices == null || choices.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "채용정보 추출에 실패했습니다. 직접 입력해주세요.");
+        }
         Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
         return (String) message.get("content");
     }
