@@ -63,6 +63,48 @@ class AdminJobPostingControllerTest {
                 .andExpect(jsonPath("$.pdfFileName").isNotEmpty());
     }
 
+    @Test
+    void 관리자가_채용공고를_등록_수정_삭제한다() throws Exception {
+        MockHttpSession session = loginAsAdmin();
+        when(extractionClient.extract(any())).thenReturn(new com.jobboard.jobposting.dto.PdfExtractionResult(
+                null, "테스트회사", "서울", "NEW", "BACHELOR", "FULL_TIME", "비고",
+                "2026-08-01", "2026-08-31", "이메일 접수", 3000, 3500, "협의가능"));
+
+        Map<String, Object> createBody = Map.ofEntries(
+                Map.entry("pdfFileName", "sample.pdf"), Map.entry("companyName", "테스트회사"), Map.entry("location", "서울"),
+                Map.entry("careerLevel", "NEW"), Map.entry("education", "BACHELOR"), Map.entry("employmentType", "FULL_TIME"),
+                Map.entry("conditionNote", "비고"), Map.entry("applyStartDate", "2026-08-01"), Map.entry("applyEndDate", "2026-08-31"),
+                Map.entry("applyMethod", "이메일 접수"), Map.entry("salaryMin", 3000), Map.entry("salaryMax", 3500), Map.entry("salaryNote", "협의가능"));
+
+        MvcResult createResult = mockMvc.perform(post("/api/admin/job-postings")
+                        .session(session)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(createBody)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        long id = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+        Map<String, Object> updateBody = Map.ofEntries(
+                Map.entry("pdfFileName", "sample.pdf"), Map.entry("companyName", "수정된회사"), Map.entry("location", "부산"),
+                Map.entry("careerLevel", "EXPERIENCED"), Map.entry("education", "MASTER"), Map.entry("employmentType", "CONTRACT"),
+                Map.entry("conditionNote", "수정된 비고"), Map.entry("applyStartDate", "2026-09-01"), Map.entry("applyEndDate", "2026-09-30"),
+                Map.entry("applyMethod", "우편 접수"), Map.entry("salaryMin", 4000), Map.entry("salaryMax", 4500), Map.entry("salaryNote", "면접후 결정"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                        "/api/admin/job-postings/" + id)
+                        .session(session)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(updateBody)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.companyName").value("수정된회사"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                        "/api/admin/job-postings/" + id)
+                        .session(session))
+                .andExpect(status().isNoContent());
+    }
+
     private byte[] createSamplePdfBytes() throws Exception {
         try (PDDocument document = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             PDPage page = new PDPage();
