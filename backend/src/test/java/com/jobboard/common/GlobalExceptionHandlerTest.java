@@ -1,0 +1,23 @@
+package com.jobboard.common;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class GlobalExceptionHandlerTest {
+
+    @Test
+    void ApiException을_상태코드와_메시지로_변환한다() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        ApiException exception = new ApiException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
+
+        ResponseEntity<Map<String, String>> response = handler.handleApiException(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("message", "이미 가입된 이메일입니다.");
+    }
+}
