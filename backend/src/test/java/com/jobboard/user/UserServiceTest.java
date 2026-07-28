@@ -59,6 +59,37 @@ class UserServiceTest {
     }
 
     @Test
+    void 본인의_권한을_변경하려_하면_예외를_던진다() {
+        assertThatThrownBy(() -> userService.updateRole(1L, UserRole.USER, 1L))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("본인의 권한은 변경할 수 없습니다.");
+    }
+
+    @Test
+    void 마지막_관리자의_권한을_회수하려_하면_예외를_던진다() {
+        User lastAdmin = new User("admin@jobboard.com", "pw", "관리자", UserRole.ADMIN);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(lastAdmin));
+        when(userRepository.countByRole(UserRole.ADMIN)).thenReturn(1L);
+
+        assertThatThrownBy(() -> userService.updateRole(2L, UserRole.USER, 1L))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("마지막 관리자의 권한은 회수할 수 없습니다.");
+    }
+
+    @Test
+    void 관리자가_둘_이상이면_권한을_회수할_수_있다() {
+        User admin = new User("admin2@jobboard.com", "pw", "관리자2", UserRole.ADMIN);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(admin));
+        when(userRepository.countByRole(UserRole.ADMIN)).thenReturn(2L);
+        when(userRepository.save(org.mockito.ArgumentMatchers.any(User.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        User updated = userService.updateRole(2L, UserRole.USER, 1L);
+
+        assertThat(updated.getRole()).isEqualTo(UserRole.USER);
+    }
+
+    @Test
     void 비밀번호가_틀리면_예외를_던진다() {
         String encoded = passwordEncoder.encode("password123");
         User existing = new User("login@jobboard.com", encoded, "홍길동", UserRole.USER);

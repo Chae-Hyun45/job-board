@@ -70,6 +70,24 @@ class UserControllerTest {
     }
 
     @Test
+    void 본인의_권한을_변경하려_하면_400을_받는다() throws Exception {
+        HttpSession adminSession = loginAsAdmin();
+
+        MvcResult meResult = mockMvc.perform(get("/api/auth/me")
+                        .session((org.springframework.mock.web.MockHttpSession) adminSession))
+                .andExpect(status().isOk())
+                .andReturn();
+        long adminId = objectMapper.readTree(meResult.getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(patch("/api/admin/users/" + adminId + "/role")
+                        .session((org.springframework.mock.web.MockHttpSession) adminSession)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(Map.of("role", "USER"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("본인의 권한은 변경할 수 없습니다."));
+    }
+
+    @Test
     void 일반회원은_회원_목록_조회시_403을_받는다() throws Exception {
         Map<String, String> registerBody = Map.of(
                 "email", "plain@jobboard.com", "password", "password123", "name", "일반회원");

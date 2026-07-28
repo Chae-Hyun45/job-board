@@ -1,7 +1,9 @@
 package com.jobboard.user;
 
+import com.jobboard.common.SessionKeys;
 import com.jobboard.user.dto.RoleUpdateRequest;
 import com.jobboard.user.dto.UserResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -28,8 +30,10 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/role")
-    public UserResponse updateRole(@PathVariable Long id, @Valid @RequestBody RoleUpdateRequest request) {
-        User user = userService.updateRole(id, UserRole.valueOf(request.role()));
+    public UserResponse updateRole(@PathVariable Long id, @Valid @RequestBody RoleUpdateRequest request,
+                                  HttpServletRequest httpRequest) {
+        Long requesterId = (Long) httpRequest.getSession().getAttribute(SessionKeys.USER_ID);
+        User user = userService.updateRole(id, UserRole.valueOf(request.role()), requesterId);
         return UserResponse.from(user);
     }
 }
