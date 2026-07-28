@@ -106,12 +106,15 @@ public class JobPostingService {
     }
 
     public Page<JobPosting> search(String keyword, String location, EmploymentType employmentType, Pageable pageable) {
-        Specification<JobPosting> spec = Specification
-                .where(JobPostingSpecifications.status(JobPostingStatus.ACTIVE))
-                .and(JobPostingSpecifications.keyword(keyword))
-                .and(JobPostingSpecifications.location(location))
-                .and(JobPostingSpecifications.employmentType(employmentType));
+        Specification<JobPosting> spec = Specification.where(JobPostingSpecifications.status(JobPostingStatus.ACTIVE));
+        spec = andIfPresent(spec, JobPostingSpecifications.keyword(keyword));
+        spec = andIfPresent(spec, JobPostingSpecifications.location(location));
+        spec = andIfPresent(spec, JobPostingSpecifications.employmentType(employmentType));
         return jobPostingRepository.findAll(spec, pageable);
+    }
+
+    private Specification<JobPosting> andIfPresent(Specification<JobPosting> base, Specification<JobPosting> addition) {
+        return addition == null ? base : base.and(addition);
     }
 
     public void closeExpired() {
