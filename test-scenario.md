@@ -3,7 +3,7 @@
 - 테스트 대상: `backend/` (Spring Boot 4.1.0, 실제 기동한 서버, `http://localhost:8080`)
 - 테스트 방식: `curl` 기반 HTTP 요청으로 실제 서버를 호출하는 블랙박스 E2E 테스트 (JUnit 자동화 테스트와 별개)
 - 실행일: 2026-07-30
-- 실행 결과 요약: **총 45건 중 44건 통과, 1건 실패**
+- 최초 실행 결과: **총 45건 중 44건 통과, 1건 실패** (COMMON-03) → 원인 수정 후 **재실행 결과 45건 전체 통과**
 
 각 시나리오는 `카테고리-번호` 형식으로 번호를 붙였다 (예: `AUTH-01`). 정상 케이스와 예외 케이스를 함께 표시했다.
 
@@ -98,11 +98,13 @@
 |---|---|---|---|---|---|---|
 | COMMON-01 | 예외 | 존재하지 않는 API 경로 호출 | 없음 | `GET /api/no-such-path` | 404 | ✅ 404 |
 | COMMON-02 | 예외 | 정의되지 않은 HTTP 메서드 호출 | 없음 | `DELETE /api/auth/login` | 405 | ✅ 405 |
-| COMMON-03 | 예외 | 문법이 깨진 JSON 요청 바디 전송 | 없음 | `POST /api/auth/login` (`{invalid-json`) | 400 | ❌ **500 반환 (실패)** |
+| COMMON-03 | 예외 | 문법이 깨진 JSON 요청 바디 전송 | 없음 | `POST /api/auth/login` (`{invalid-json`) | 400 | ✅ 400 (수정 후 재실행, 아래 참고) |
 
 ---
 
-## ❌ 실패 발견: COMMON-03 (잘못된 JSON 형식 요청 시 400이 아닌 500 반환)
+## ✅ 수정 완료: COMMON-03 (잘못된 JSON 형식 요청 시 400이 아닌 500 반환하던 문제)
+
+**상태: 수정 완료 및 재검증됨.** 아래는 최초 발견 당시의 원인 분석이며, 수정 내용은 이 섹션 마지막의 "적용한 수정"을 참고.
 
 **증상:** 문법이 깨진 JSON을 요청 바디로 보내면 `HttpMessageNotReadableException`이 발생하는데, 400이 아니라 500 + `{"message":"서버 오류가 발생했습니다."}`가 반환된다.
 
@@ -128,7 +130,21 @@ public ResponseEntity<Map<String, String>> handleUnexpected(Exception exception)
 
 **영향받는 실제 범위:** 클라이언트(프론트엔드)는 항상 올바른 형식의 JSON을 보내므로 정상 사용 흐름에서는 발생하지 않는다. API를 직접 잘못 호출하는 경우에만 영향을 받는다 (심각도: Minor~Important, 사용자 경험상 큰 문제는 아니지만 REST API 시맨틱상 부정확함).
 
-**제안하는 수정:** `handleUnexpected`의 `ErrorResponse` 분기에 `HttpMessageNotReadableException`, `MethodArgumentTypeMismatchException` 등을 추가하거나, 이 핸들러 클래스가 `ResponseEntityExceptionHandler`를 상속하도록 바꾸면 Spring이 원래 처리하던 4xx 매핑을 그대로 살릴 수 있다.
+**적용한 수정:** `GlobalExceptionHandler`에 `HttpMessageNotReadableException` 전용 핸들러를 추가해, 이 예외가 범용 `Exception` 폴백(500)으로 넘어가기 전에 먼저 400 + 한글 메시지로 처리하도록 했다.
+
+```java
+@ExceptionHandler(HttpMessageNotReadableException.class)
+public ResponseEntity<Map<String, String>> handleMessageNotReadable(HttpMessageNotReadableException exception) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(Map.of("message", "요청 본문의 형식이 올바르지 않습니다."));
+}
+```
+
+- 단위 테스트 추가: `GlobalExceptionHandlerTest.깨진_JSON_요청은_400과_한글_메시지로_변환한다` (PASS)
+- 백엔드 전체 테스트: 45/45 통과 (기존 44 + 신규 1)
+- 서버 재기동 후 COMMON-03 시나리오 재실행: `400 {"message":"요청 본문의 형식이 올바르지 않습니다."}` 확인
+
+**참고(이번엔 손대지 않음):** 같은 근본 원인(`ErrorResponse`를 구현하지 않는 예외가 범용 500 핸들러로 빠지는 문제)이 `MethodArgumentTypeMismatchException`(경로/쿼리 파라미터 타입 불일치) 등에도 동일하게 적용될 수 있다. 이번 E2E에서 실제로 발견/재현된 것은 JSON 파싱 실패(COMMON-03) 케이스뿐이라 그 부분만 수정했고, 다른 타입도 동일 증상이 의심되면 같은 패턴으로 핸들러를 추가하면 된다.
 
 ---
 
@@ -142,8 +158,8 @@ public ResponseEntity<Map<String, String>> handleUnexpected(Exception exception)
 | JOB-ADMIN | 8 | 8 | 0 | |
 | DUMMY | 4 | 4 | 0 | |
 | JOB-PUBLIC | 6 | 6 | 0 | JOB-PUBLIC-04는 스케줄러 의존으로 E2E 재현 불가(통합테스트로 검증) |
-| COMMON | 3 | 2 | 1 | **COMMON-03 실패 — 위 상세 참고** |
-| **합계** | **45** | **44** | **1** | |
+| COMMON | 3 | 3 | 0 | COMMON-03은 최초 실패 후 수정·재검증하여 통과 (위 상세 참고) |
+| **합계** | **45** | **45** | **0** | |
 
 ## 실행 방법 (재실행 시 참고)
 

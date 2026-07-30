@@ -1,8 +1,10 @@
 package com.jobboard.common;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.Map;
@@ -31,6 +33,18 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE);
         assertThat(response.getBody()).containsEntry("message", "업로드 가능한 파일 크기(10MB)를 초과했습니다.");
+    }
+
+    @Test
+    void 깨진_JSON_요청은_400과_한글_메시지로_변환한다() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        HttpMessageNotReadableException exception =
+                new HttpMessageNotReadableException("broken json", (HttpInputMessage) null);
+
+        ResponseEntity<Map<String, String>> response = handler.handleMessageNotReadable(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("message", "요청 본문의 형식이 올바르지 않습니다.");
     }
 
     @Test
