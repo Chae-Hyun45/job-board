@@ -41,4 +41,23 @@ describe('LoginPage', () => {
       password: 'admin1234!',
     }))
   })
+
+  it('일반 사용자 로그인 버튼을 누르면 입력 없이 일반회원 계정으로 로그인한다', async () => {
+    const login = vi.fn().mockResolvedValue({ id: 2, role: 'USER' })
+
+    render(
+      <AuthContext.Provider value={{ user: null, loading: false, login }}>
+        <MemoryRouter>
+          <LoginPage />
+        </MemoryRouter>
+      </AuthContext.Provider>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '일반 사용자 로그인' }))
+
+    await waitFor(() => expect(login).toHaveBeenCalledWith({
+      email: 'member@jobboard.local',
+      password: 'member1234!',
+    }))
+  })
 })

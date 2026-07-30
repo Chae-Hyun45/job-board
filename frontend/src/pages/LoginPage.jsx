@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../context/AuthContext'
 
 const ADMIN_CREDENTIALS = { email: 'admin@jobboard.local', password: 'admin1234!' }
+const MEMBER_CREDENTIALS = { email: 'member@jobboard.local', password: 'member1234!' }
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -22,10 +23,10 @@ export function LoginPage() {
     }
   }
 
-  async function handleAdminLogin() {
+  async function handleQuickLogin(credentials) {
     setError(null)
     try {
-      await login(ADMIN_CREDENTIALS)
+      await login(credentials)
       navigate('/')
     } catch (err) {
       setError(err.message)
@@ -48,8 +49,13 @@ export function LoginPage() {
                  onChange={(e) => setPassword(e.target.value)} required />
         </div>
         <button type="submit" className="btn btn-primary">로그인</button>
-        <button type="button" className="btn btn-secondary" style={{ marginTop: 8 }} onClick={handleAdminLogin}>
+        <button type="button" className="btn btn-secondary" style={{ marginTop: 8 }}
+                onClick={() => handleQuickLogin(ADMIN_CREDENTIALS)}>
           관리자 로그인
+        </button>
+        <button type="button" className="btn btn-secondary" style={{ marginTop: 8 }}
+                onClick={() => handleQuickLogin(MEMBER_CREDENTIALS)}>
+          일반 사용자 로그인
         </button>
         <p style={{ marginTop: 14 }}><Link to="/register">회원가입</Link></p>
       </form>
